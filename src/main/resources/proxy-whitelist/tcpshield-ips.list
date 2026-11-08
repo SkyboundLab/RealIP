@@ -1,0 +1,32 @@
+# TCPShield edge IPs — OFFLINE BASELINE ONLY.
+# The live ranges are fetched automatically from TCPShield on startup and
+# every 6 hours after that (https://tcpshield.com/v4/ and
+# https://tcpshield.com/v4-cf/), and the last fetched set is cached in
+# plugins/TCPShield/tcpshield-ips.fetched. This file is only used when the
+# ranges have never been fetched (e.g. no network on first boot). If
+# TCPShield publishes a new range, the plugin picks it up by itself — you
+# do not need to edit anything here.
+#
+# To add an extra range of your own, create your own file in
+# plugins/TCPShield/proxy-whitelist/ (one CIDR per line). Files there are
+# always honoured on top of the fetched ranges. Lines starting with '#'
+# and blank lines are ignored.
+#
+# Sources, as fetched 2026-11-07:
+#   IPv4: https://tcpshield.com/v4/
+#   IPv4 via Cloudflare-fronted edges: https://tcpshield.com/v4-cf/
+#   IPv6: TCPShield AS64199 (2602:fa78::/40); tcpshield.com publishes no v6 list.
+198.178.119.0/24
+104.234.6.0/25
+89.222.122.36/31
+152.233.22.8/31
+89.222.108.246/31
+84.17.55.186/31
+51.79.45.52/31
+5.135.84.92/30
+51.75.35.44/30
+51.161.27.110/31
+152.233.30.16/31
+152.233.30.232/31
+203.205.31.160/31
+2602:fa78::/40

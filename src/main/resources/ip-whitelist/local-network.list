@@ -1,0 +1,8 @@
+# Local / direct connections.
+# A connection WITHOUT a TCPShield handshake is only accepted when it comes
+# from one of these ranges. This is how players on your own network connect
+# directly to the backend, bypassing TCPShield. One CIDR per line; lines
+# starting with '#' and blank lines are ignored.
+127.0.0.1/32
+::1/128
+192.168.2.0/24

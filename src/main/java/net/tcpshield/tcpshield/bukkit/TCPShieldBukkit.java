@@ -72,6 +72,12 @@ public class TCPShieldBukkit extends JavaPlugin implements TCPShieldPlugin {
 
 	}
 
+	@Override
+	public void onDisable() {
+		if (packetHandler != null)
+			packetHandler.shutdown();
+	}
+
 
 	/*
 	 * The provider's base methods

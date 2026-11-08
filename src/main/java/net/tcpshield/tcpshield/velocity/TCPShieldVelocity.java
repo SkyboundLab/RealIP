@@ -3,6 +3,7 @@ package net.tcpshield.tcpshield.velocity;
 import com.google.inject.Inject;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
+import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
@@ -57,6 +58,12 @@ public class TCPShieldVelocity implements TCPShieldPlugin {
 		} catch (Exception exception) {
 			throw new InitializationException(exception);
 		}
+	}
+
+	@Subscribe
+	public void onProxyShutdown(ProxyShutdownEvent e) {
+		if (packetHandler != null)
+			packetHandler.shutdown();
 	}
 
 	/*

@@ -4,6 +4,7 @@ import net.tcpshield.tcpshield.util.exception.phase.CIDRException;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.Arrays;
 
 /**
  * CIDR matcher for the CIDR validator
@@ -50,7 +51,7 @@ public abstract class CIDRMatcher {
 			throw new CIDRException("Empty CIDR entry");
 
 		try {
-			cidrAddress = InetAddress.getByName(parsedIPAddress);
+			cidrAddress = unwrapIPv4Mapped(InetAddress.getByName(parsedIPAddress));
 		} catch (UnknownHostException e) {
 			throw new CIDRException(e);
 		}
@@ -64,11 +65,38 @@ public abstract class CIDRMatcher {
 	}
 
 	/**
+	 * Unwraps an IPv4-mapped IPv6 address ({@code ::ffff:a.b.c.d}) to its plain
+	 * IPv4 form. On dual-stack servers a TCP peer that connected over IPv4
+	 * can show up as a mapped IPv6 address; without this, an IPv4 CIDR such
+	 * as {@code 192.168.2.0/24} would never match it and legitimate
+	 * connections would be rejected.
+	 */
+	private static InetAddress unwrapIPv4Mapped(InetAddress address) {
+		byte[] bytes = address.getAddress();
+		if (bytes.length != 16)
+			return address;
+
+		for (int i = 0; i < 10; i++)
+			if (bytes[i] != 0)
+				return address;
+		if (bytes[10] != (byte) 0xFF || bytes[11] != (byte) 0xFF)
+			return address;
+
+		try {
+			return InetAddress.getByAddress(Arrays.copyOfRange(bytes, 12, 16));
+		} catch (UnknownHostException e) {
+			return address;
+		}
+	}
+
+	/**
 	 * Compares the provided InetAddress with the CIDR for a match
 	 * @param inetAddress The InetAddress to match with the CIDR
 	 * @return Boolean stating if the provided InetAddress matches the CIDR
 	 */
 	public boolean match(InetAddress inetAddress) {
+		inetAddress = unwrapIPv4Mapped(inetAddress);
+
 		if (!cidrAddress.getClass().equals(inetAddress.getClass())) return false; // check if IP is IPv4 or IPv6
 
 		if (simpleCIDR) return inetAddress.equals(cidrAddress); // check for equality if it's a simple CIDR

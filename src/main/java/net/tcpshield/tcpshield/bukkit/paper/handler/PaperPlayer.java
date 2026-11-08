@@ -42,7 +42,14 @@ public class PaperPlayer implements PlayerProvider {
 
 	@Override
 	public String getIP() {
-		return handshakeEvent.getSocketAddressHostname();
+		// The server only fills originalSocketAddressHostname when it fires
+		// this event; socketAddressHostname stays null until a plugin sets
+		// it (TCPShield itself sets it in setIP, to the forwarded real IP).
+		// Returning the raw field would give null, and InetAddress.getByName
+		// (null) silently resolves to loopback, which would make every
+		// connection look like it came from 127.0.0.1.
+		String hostname = handshakeEvent.getSocketAddressHostname();
+		return hostname != null ? hostname : handshakeEvent.getOriginalSocketAddressHostname();
 	}
 
 	@Override

@@ -1,6 +1,18 @@
 # Please keep this as true in while using TCPShield!
 only-allow-proxy-connections: true
 
+# With only-allow-proxy-connections on, a connection is only accepted from:
+#  - TCPShield edge IPs, which may present a signed handshake. Their ranges
+#    are fetched automatically from https://tcpshield.com/v4/ and /v4-cf/ on
+#    startup and every 6 hours, cached in tcpshield-ips.fetched, and fall
+#    back to the ranges bundled in the jar when offline. Files you add to
+#    proxy-whitelist/ are honoured on top of the fetched ranges.
+#  - ip-whitelist/    : local networks, which may connect directly with no handshake
+#    (shipped default: local-network.list, 127.0.0.1 + 192.168.2.0/24)
+# Both folders take one CIDR per line, '#' comments and blank lines ignored.
+# Edit the files in plugins/TCPShield/ and restart to change them; your edits
+# are never overwritten. List changes need a restart to take effect.
+
 # available modes: system (uses the system time), htpdate (uses a synchronized date) & off (deactivates timestamp validation)
 timestamp-validation: 'htpdate'
 

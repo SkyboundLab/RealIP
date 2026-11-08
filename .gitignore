@@ -1,6 +1,10 @@
 # Testing
 ip-whitelist/
 
+# ...but the default local-network list shipped inside the jar is tracked
+!src/main/resources/ip-whitelist/
+!src/main/resources/ip-whitelist/local-network.list
+
 # IntelliJ
 .idea/
 build/

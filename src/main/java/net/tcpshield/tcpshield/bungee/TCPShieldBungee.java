@@ -38,6 +38,12 @@ public class TCPShieldBungee extends Plugin implements TCPShieldPlugin, Listener
 		}
 	}
 
+	@Override
+	public void onDisable() {
+		if (packetHandler != null)
+			packetHandler.shutdown();
+	}
+
 	/*
 	 * The provider's base methods
 	 */
