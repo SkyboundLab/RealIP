@@ -1,0 +1,47 @@
+name: Build Development
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: temurin
+
+      - name: Download ProtocolLib
+        run: |
+          mkdir -p libs
+          curl -sSL -o libs/ProtocolLib.jar https://github.com/dmulloy2/ProtocolLib/releases/download/5.4.0/ProtocolLib.jar
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.14.4
+
+      - name: Build
+        run: gradle build
+
+      - name: Extract repository name
+        run: echo "NAME=$(basename ${{ github.repository }})" >> $GITHUB_ENV
+
+      - name: Upload Build
+        uses: marvinpinto/action-automatic-releases@master
+        with:
+          title: "${{ env.NAME }}"
+          automatic_release_tag: "latest"
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          files: "build/libs/*.jar"
+          prerelease: false
