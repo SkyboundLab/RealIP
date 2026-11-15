@@ -33,17 +33,10 @@ public class TCPShieldPacketHandler {
 
 	private TimestampValidator timestampValidator;
 	private SignatureValidator signatureValidator;
-	// Sources allowed to present a signed TCPShield handshake (TCPShield edge IPs)
 	private CIDRValidator proxyValidator;
-	// Sources allowed to connect directly, without a handshake (local networks)
 	private CIDRValidator directValidator;
-	// TCPShield's edge ranges, fetched from tcpshield.com (see RemoteCIDRList)
 	private RemoteCIDRList remoteProxyRanges;
 
-	/**
-	 * Stops background work (the TCPShield IP refresh). Called from the
-	 * platform's disable/shutdown hook.
-	 */
 	public void shutdown() {
 		if (remoteProxyRanges != null)
 			remoteProxyRanges.stop();
@@ -92,9 +85,6 @@ public class TCPShieldPacketHandler {
 			}
 		}
 
-		// The proxy list is fetched from TCPShield, not a static file: the
-		// bundled ranges ship in the jar only as the offline baseline.
-		// Files in proxy-whitelist/ still load as extra additions.
 		proxyValidator = new CIDRValidator(plugin, "proxy-whitelist");
 		directValidator = new CIDRValidator(plugin, "ip-whitelist", "local-network.list");
 
@@ -118,9 +108,6 @@ public class TCPShieldPacketHandler {
 		try {
 			String sourceIP = player.getIP();
 
-			// Fail closed: a missing source IP must never resolve to
-			// loopback (InetAddress.getByName(null) does exactly that),
-			// which would make every connection look local.
 			if (sourceIP == null || sourceIP.isBlank()) {
 				plugin.getLogger().warning(String.format(
 						"%s[%s] was disconnected because the connection's source IP could not be determined.",
@@ -134,15 +121,7 @@ public class TCPShieldPacketHandler {
 			boolean fromProxy = proxyValidator.validate(inetAddress);
 			boolean fromDirect = directValidator.validate(inetAddress);
 
-			// Default-deny by source: with only-allow-proxy-connections on,
-			// a connection is only accepted when it comes from a TCPShield
-			// edge IP or from an allowed local network. Anything else is
-			// dropped before its payload is even looked at, so a backend IP
-			// leak alone no longer lets anyone bypass TCPShield.
 			if (plugin.getConfigProvider().isOnlyProxy() && !fromProxy && !fromDirect) {
-				// Logged on the real logger, not the debug-gated Debugger, so a
-				// rejected connection always leaves a trace (debug-mode is off
-				// by default and silences Debugger.warn entirely).
 				plugin.getLogger().warning(String.format(
 						"%s[%s/%s] was disconnected because the connection did not come from a TCPShield IP or an allowed local network.",
 						player.getName(), player.getUUID(), player.getIP()));
@@ -203,13 +182,7 @@ public class TCPShieldPacketHandler {
 					throw new SignatureValidationException();
 			}
 
-			// A signed handshake is only worth anything when it actually came
-			// through TCPShield. A valid signature presented from any other
-			// source (for example a replayed payload sent direct) is rejected
-			// instead of being trusted.
 			if (plugin.getConfigProvider().isOnlyProxy() && !fromProxy) {
-				// Logged on the real logger, not the debug-gated Debugger, so a
-				// rejected connection always leaves a trace (see above).
 				plugin.getLogger().warning(String.format(
 						"%s[%s/%s] was disconnected because it sent TCPShield proxy info from an IP that is not a TCPShield IP.",
 						player.getName(), player.getUUID(), player.getIP()));

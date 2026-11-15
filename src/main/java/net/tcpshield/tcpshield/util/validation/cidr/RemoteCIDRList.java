@@ -20,31 +20,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.logging.Logger;
 
-/**
- * TCPShield's edge IP ranges, fetched from TCPShield itself.
- *
- * <p>Sources: {@code https://tcpshield.com/v4/} and
- * {@code https://tcpshield.com/v4-cf/}, each plain text with one CIDR per line.
- * TCPShield publishes no IPv6 list, so the AS64199 range below is kept as a
- * constant alongside the fetched IPv4 ranges.</p>
- *
- * <p>Behaviour, in order of safety:</p>
- * <ul>
- *   <li>The list starts as the bundled baseline shipped in the jar, or the
- *   persisted cache from the last successful fetch if one exists, so the
- *   plugin works with no network at all.</li>
- *   <li>Fetching runs on a background thread and never blocks startup.</li>
- *   <li>A refresh replaces the whole list only when <em>every</em> source
- *   returns at least one valid CIDR. If any source fails, the previous list
- *   is kept untouched: keeping a stale range is a minor widening, dropping
- *   a live range would lock real players out.</li>
- *   <li>Every successful refresh is persisted to the cache file, so a
- *   restart without network still starts from fresh ranges.</li>
- * </ul>
- */
 public class RemoteCIDRList {
 
-	/** Plain-text CIDR lists published by TCPShield. */
 	public static final List<String> SOURCE_URLS = List.of(
 			"https://tcpshield.com/v4/",
 			"https://tcpshield.com/v4-cf/"
@@ -53,7 +30,6 @@ public class RemoteCIDRList {
 	/** TCPShield AS64199 IPv6 range; no v6 list endpoint exists. */
 	public static final String IPV6_BASELINE = "2602:fa78::/40";
 
-	/** How often the ranges are re-fetched while the server is running. */
 	public static final long REFRESH_INTERVAL_HOURS = 6;
 
 	private static final int CONNECT_TIMEOUT_MS = 5000;
@@ -72,27 +48,10 @@ public class RemoteCIDRList {
 
 	private ScheduledExecutorService scheduler;
 
-	/**
-	 * Production constructor: default sources and the bundled baseline
-	 * shipped in the jar at {@code /proxy-whitelist/tcpshield-ips.list}.
-	 *
-	 * @param logger The plugin logger (rejections and refreshes must be
-	 *               visible, so this is the real logger, not the
-	 *               debug-gated Debugger)
-	 * @param cacheFile Where the last successfully fetched ranges persist
-	 */
 	public RemoteCIDRList(Logger logger, File cacheFile) {
 		this(logger, cacheFile, SOURCE_URLS, readBundledBaseline(logger));
 	}
 
-	/**
-	 * Test constructor: explicit sources and baseline.
-	 *
-	 * @param logger The logger to write refresh results to
-	 * @param cacheFile Where the last successfully fetched ranges persist
-	 * @param sourceUrls The list URLs to fetch, one CIDR per line each
-	 * @param baselineEntries Entries used until the first successful fetch
-	 */
 	public RemoteCIDRList(Logger logger, File cacheFile, List<String> sourceUrls, List<String> baselineEntries) {
 		this.logger = logger;
 		this.cacheFile = cacheFile;
@@ -105,20 +64,14 @@ public class RemoteCIDRList {
 		setMatchers(toMatchers(initial));
 	}
 
-	/** The ranges currently in effect. */
 	public List<CIDRMatcher> currentMatchers() {
 		return currentMatchers;
 	}
 
-	/** Called with the new list after every successful refresh. */
 	public void onUpdate(Consumer<List<CIDRMatcher>> onUpdate) {
 		this.onUpdate = onUpdate;
 	}
 
-	/**
-	 * Starts background refreshing: one fetch right away (async, never
-	 * blocking the caller) and then every {@link #REFRESH_INTERVAL_HOURS}.
-	 */
 	public synchronized void start() {
 		if (scheduler != null)
 			return;
@@ -130,7 +83,6 @@ public class RemoteCIDRList {
 		scheduler.scheduleWithFixedDelay(this::refresh, 0, REFRESH_INTERVAL_HOURS, TimeUnit.HOURS);
 	}
 
-	/** Stops background refreshing. Safe to call when never started. */
 	public synchronized void stop() {
 		if (scheduler != null) {
 			scheduler.shutdownNow();
@@ -138,12 +90,6 @@ public class RemoteCIDRList {
 		}
 	}
 
-	/**
-	 * Fetches every source and, only if all of them returned at least one
-	 * valid CIDR, replaces the list and persists it to the cache file.
-	 *
-	 * @return true when the list was replaced
-	 */
 	public boolean refresh() {
 		Set<String> fetched = new LinkedHashSet<>();
 		for (String url : sourceUrls) {
@@ -174,7 +120,6 @@ public class RemoteCIDRList {
 		onUpdate.accept(currentMatchers);
 	}
 
-	/** Fetches one source URL and returns its valid CIDR entries. */
 	private List<String> fetch(String urlString) throws IOException {
 		HttpURLConnection connection = (HttpURLConnection) new URL(urlString).openConnection();
 		connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
@@ -211,7 +156,6 @@ public class RemoteCIDRList {
 		return entries;
 	}
 
-	/** Reads the persisted cache file, or null when there is none / it is unusable. */
 	private List<String> readCacheFile() {
 		if (!cacheFile.exists())
 			return null;
@@ -228,7 +172,6 @@ public class RemoteCIDRList {
 		}
 	}
 
-	/** Persists fetched ranges atomically (write temp file, then move). */
 	private void writeCacheFile(List<String> entries) {
 		try {
 			File tempFile = new File(cacheFile.getParentFile(), cacheFile.getName() + ".tmp");
@@ -259,14 +202,11 @@ public class RemoteCIDRList {
 			try {
 				CIDRMatcher.create(entry);
 				entries.add(entry);
-			} catch (Exception ignored) {
-				// Invalid lines in the cache are skipped, not fatal
-			}
+			} catch (Exception ignored) {}
 		}
 		return entries;
 	}
 
-	/** The bundled baseline shipped in the jar, or empty when missing. */
 	private static List<String> readBundledBaseline(Logger logger) {
 		try (InputStream in = RemoteCIDRList.class.getResourceAsStream("/proxy-whitelist/tcpshield-ips.list")) {
 			if (in == null) {

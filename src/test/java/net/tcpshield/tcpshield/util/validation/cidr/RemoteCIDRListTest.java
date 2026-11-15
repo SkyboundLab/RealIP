@@ -22,12 +22,6 @@ import java.util.logging.Logger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Guards the auto-fetch of TCPShield's IP ranges: the list starts from the
- * bundled baseline (or the persisted cache), a successful refresh replaces
- * it wholesale, and any failed or empty refresh keeps the previous list.
- * Fetching is tested against a real local HTTP server, not the internet.
- */
 public class RemoteCIDRListTest {
 
 	private static final Logger LOGGER = Logger.getLogger("test");
@@ -40,7 +34,6 @@ public class RemoteCIDRListTest {
 		return false;
 	}
 
-	/** Minimal TCPShieldPlugin stub so CIDRValidator can be exercised. */
 	private static class TestConfig extends ConfigProvider {
 		TestConfig(File dataFolder) {
 			this.dataFolder = dataFolder;
@@ -122,7 +115,7 @@ public class RemoteCIDRListTest {
 				List.of("http://127.0.0.1:1/v4", "http://127.0.0.1:1/v4-cf"),
 				List.of("203.0.113.0/24", "198.51.100.7/32"));
 
-		assertFalse(list.refresh()); // unreachable: keeps the baseline
+		assertFalse(list.refresh());
 		assertTrue(matchesAny(list.currentMatchers(), "203.0.113.44"));
 		assertTrue(matchesAny(list.currentMatchers(), "198.51.100.7"));
 		assertFalse(matchesAny(list.currentMatchers(), "192.0.2.1"));
@@ -140,14 +133,12 @@ public class RemoteCIDRListTest {
 
 			assertTrue(list.refresh());
 
-			// Fetched ranges apply, including the /31 and the /25 edge
 			assertTrue(matchesAny(list.currentMatchers(), "198.178.119.200"));
 			assertTrue(matchesAny(list.currentMatchers(), "104.234.6.127"));
 			assertFalse(matchesAny(list.currentMatchers(), "104.234.6.128"));
 			assertTrue(matchesAny(list.currentMatchers(), "89.222.122.37"));
-			// The IPv6 range is kept even though no v6 source exists
+			// no v6 endpoint exists; the IPv6 constant is always added
 			assertTrue(matchesAny(list.currentMatchers(), "2602:fa78::1"));
-			// The old baseline is gone: wholesale replacement, not a union
 			assertFalse(matchesAny(list.currentMatchers(), "203.0.113.44"));
 		} finally {
 			server.stop(0);
@@ -164,10 +155,9 @@ public class RemoteCIDRListTest {
 			assertTrue(list.refresh());
 			assertTrue(matchesAny(list.currentMatchers(), "198.178.119.200"));
 
-			server.stop(0); // sources go away mid-test
+			server.stop(0);
 			assertFalse(list.refresh());
 
-			// Still the fetched list, not the baseline and not empty
 			assertTrue(matchesAny(list.currentMatchers(), "198.178.119.200"));
 			assertFalse(matchesAny(list.currentMatchers(), "203.0.113.44"));
 		} finally {
@@ -182,7 +172,7 @@ public class RemoteCIDRListTest {
 			RemoteCIDRList list = new RemoteCIDRList(LOGGER, tempDir.resolve("cache").toFile(),
 					List.of(baseUrl(server) + "/v4", baseUrl(server) + "/v4-cf"),
 					List.of("203.0.113.0/24"));
-			assertFalse(list.refresh()); // second source is empty
+			assertFalse(list.refresh());
 			assertTrue(matchesAny(list.currentMatchers(), "203.0.113.44"));
 			assertFalse(matchesAny(list.currentMatchers(), "198.178.119.200"));
 		} finally {
@@ -204,7 +194,6 @@ public class RemoteCIDRListTest {
 			server.stop(0);
 		}
 
-		// New instance, sources unreachable: starts from the cache
 		RemoteCIDRList second = new RemoteCIDRList(LOGGER, cacheFile,
 				List.of("http://127.0.0.1:1/v4", "http://127.0.0.1:1/v4-cf"),
 				List.of("203.0.113.0/24"));
@@ -222,7 +211,7 @@ public class RemoteCIDRListTest {
 		validator.setRemoteMatchers(List.of(CIDRMatcher.create("192.168.2.0/24")));
 		assertTrue(validator.validate(InetAddress.getByName("192.168.2.50")));
 
-		// The range is withdrawn: the previously seen IP must stop matching
+		// withdrawn range must stop matching even for a previously seen IP
 		validator.setRemoteMatchers(List.of());
 		assertFalse(validator.validate(InetAddress.getByName("192.168.2.50")));
 	}

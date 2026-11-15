@@ -64,13 +64,6 @@ public abstract class CIDRMatcher {
 		this.maskBytes = simpleCIDR ? -1 : maskBits / 8;
 	}
 
-	/**
-	 * Unwraps an IPv4-mapped IPv6 address ({@code ::ffff:a.b.c.d}) to its plain
-	 * IPv4 form. On dual-stack servers a TCP peer that connected over IPv4
-	 * can show up as a mapped IPv6 address; without this, an IPv4 CIDR such
-	 * as {@code 192.168.2.0/24} would never match it and legitimate
-	 * connections would be rejected.
-	 */
 	private static InetAddress unwrapIPv4Mapped(InetAddress address) {
 		byte[] bytes = address.getAddress();
 		if (bytes.length != 16)
